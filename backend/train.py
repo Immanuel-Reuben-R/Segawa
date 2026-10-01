@@ -11,7 +11,7 @@ import math
 # Hyperparameters
 BATCH_SIZE = 64
 EPOCHS = 50
-LEARNING_RATE = 3e-4
+LEARNING_RATE = 1e-3
 MAX_LENGTH = 60
 VOCAB_SIZE = 8000
 
