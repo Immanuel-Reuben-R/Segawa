@@ -17,8 +17,8 @@ print("Starting Segawa API Server...")
 
 # 1. Load Dataset purely to get the vocabulary mappings
 print("Loading vocabulary (this takes a moment)...")
-lines_path = r"F:\Segawa datasets\movie_lines.txt"
-conv_path = r"F:\Segawa datasets\movie_conversations.txt"
+lines_path = r"datasets/movie_lines.txt"
+conv_path = r"datasets/movie_conversations.txt"
 dataset = CornellMovieDataset(lines_path, conv_path, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE)
 
 # 2. Initialize Model

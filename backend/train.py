@@ -19,9 +19,9 @@ def train():
     print("Initializing Segawa Training Pipeline...")
     
     # 1. Load Data
-    lines_path = r"F:\Segawa datasets\movie_lines.txt"
-    conv_path = r"F:\Segawa datasets\movie_conversations.txt"
-    shakespeare_path = r"F:\Segawa datasets\input.txt"
+    lines_path = r"datasets/movie_lines.txt"
+    conv_path = r"datasets/movie_conversations.txt"
+    shakespeare_path = r"datasets/input.txt"
     
     dataset = CornellMovieDataset(lines_path, conv_path, shakespeare_path, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE)
     
