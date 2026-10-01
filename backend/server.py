@@ -34,16 +34,12 @@ else:
 model.eval()
 
 def generate_response(user_input):
-    words = user_input.lower().split()
-    q_tokens = [dataset.word2idx.get(w, dataset.UNK_IDX) for w in words]
-    
-    # Start sequence with <BOS> Question <EOS>
-    tokens = [dataset.BOS_IDX] + q_tokens + [dataset.EOS_IDX]
-    
+    # Encode prompt using the new dataset helper
+    tokens = dataset.encode_prompt(user_input)
     input_tensor = torch.tensor([tokens], dtype=torch.long).to(device)
     
     # Autoregressive Generation
-    response_words = []
+    generated_ids = []
     
     with torch.no_grad():
         for _ in range(MAX_LENGTH):
@@ -57,9 +53,7 @@ def generate_response(user_input):
             if next_token_id == dataset.EOS_IDX:
                 break
                 
-            word = dataset.idx2word.get(next_token_id, '')
-            if word not in ['<PAD>', '<BOS>', '<UNK>']:
-                response_words.append(word)
+            generated_ids.append(next_token_id)
                 
             # Append next_token_id to input_tensor
             next_token_tensor = torch.tensor([[next_token_id]], dtype=torch.long).to(device)
@@ -69,7 +63,7 @@ def generate_response(user_input):
             if input_tensor.size(1) > MAX_LENGTH:
                 input_tensor = input_tensor[:, -MAX_LENGTH:]
                 
-    return " ".join(response_words)
+    return dataset.decode(generated_ids)
 
 @app.route("/chat", methods=["POST"])
 def chat():
