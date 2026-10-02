@@ -87,10 +87,11 @@ def train():
     set_seed(SEED)
 
     # 1. Data
+    data_dir = r"F:\Segawa datasets"
     dataset = CornellMovieDataset(
-        r"datasets/movie_lines.txt",
-        r"datasets/movie_conversations.txt",
-        r"datasets/input.txt",
+        os.path.join(data_dir, "movie_lines.txt"),
+        os.path.join(data_dir, "movie_conversations.txt"),
+        os.path.join(data_dir, "input.txt"),
         max_length=MAX_LENGTH,
         vocab_size=VOCAB_SIZE,
     )
