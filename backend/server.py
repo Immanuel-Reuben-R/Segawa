@@ -1,11 +1,13 @@
-from flask import Flask, request, jsonify
+import os
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import torch
-import os
 from dataset import CornellMovieDataset
 from model import SegawaModel, device
 
-app = Flask(__name__)
+# Set static folder to the frontend directory
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+app = Flask(__name__, static_folder=frontend_dir, static_url_path='')
 CORS(app) # Allow frontend to talk to backend
 
 # Configuration
@@ -65,6 +67,10 @@ def generate_response(user_input):
                 input_tensor = input_tensor[:, -MAX_LENGTH:]
                 
     return dataset.decode(generated_ids)
+
+@app.route("/")
+def index():
+    return app.send_static_file('index.html')
 
 @app.route("/chat", methods=["POST"])
 def chat():
