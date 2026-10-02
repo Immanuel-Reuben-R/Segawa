@@ -11,7 +11,7 @@ CORS(app) # Allow frontend to talk to backend
 # Configuration
 MAX_LENGTH = 60
 VOCAB_SIZE = 8000
-CHECKPOINT_PATH = "backend/checkpoints/segawa_best.pth"
+CHECKPOINT_PATH = "backend/checkpoints/segawa_current_best.pth"
 
 print("Starting Segawa API Server...")
 
