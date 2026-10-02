@@ -5,9 +5,7 @@ import torch
 from dataset import CornellMovieDataset
 from model import SegawaModel, device
 
-# Set static folder to the frontend directory
-frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
-app = Flask(__name__, static_folder=frontend_dir, static_url_path='')
+app = Flask(__name__)
 CORS(app) # Allow frontend to talk to backend
 
 # Configuration
@@ -70,7 +68,13 @@ def generate_response(user_input):
 
 @app.route("/")
 def index():
-    return app.send_static_file('index.html')
+    frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+    return send_from_directory(frontend_dir, 'index.html')
+
+@app.route("/<path:path>")
+def serve_static(path):
+    frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+    return send_from_directory(frontend_dir, path)
 
 @app.route("/chat", methods=["POST"])
 def chat():
