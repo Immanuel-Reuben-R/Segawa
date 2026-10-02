@@ -34,8 +34,8 @@ class SegawaDataset(Dataset):
                     raw_pairs.append((q, a, f"{prefix}{i}"))
 
         # ---------- 1. Cornell Movie Dialogs ----------
-        lines_path = os.path.join(data_dir, "Shakespeare and Cornell", "movie_lines.txt")
-        conv_path = os.path.join(data_dir, "Shakespeare and Cornell", "movie_conversations.txt")
+        lines_path = os.path.join(data_dir, "movie_lines.txt")
+        conv_path = os.path.join(data_dir, "movie_conversations.txt")
         if os.path.exists(lines_path) and os.path.exists(conv_path):
             print("Loading Cornell Movie Dialogs...")
             sep = r' \+\+\+\$\+\+\+ '
