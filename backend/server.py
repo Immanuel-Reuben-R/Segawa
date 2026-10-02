@@ -10,15 +10,15 @@ CORS(app) # Allow frontend to talk to backend
 
 # Configuration
 MAX_LENGTH = 60
-VOCAB_SIZE = 8000
-CHECKPOINT_PATH = "backend/checkpoints/segawa_current_best.pth"
+VOCAB_SIZE = 15000
+CHECKPOINT_PATH = "backend/checkpoints/segawa_best.pth"
 
 print("Starting Segawa API Server...")
 
 # 1. Load Dataset purely to get the vocabulary mappings
 print("Loading vocabulary (this takes a moment)...")
 dataset_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'datasets'))
-dataset = SegawaDataset(dataset_dir, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE, load_all=False)
+dataset = SegawaDataset(dataset_dir, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE, load_all=True)
 
 # 2. Initialize Model
 print("Loading Segawa Brain...")

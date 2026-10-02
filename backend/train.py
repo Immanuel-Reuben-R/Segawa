@@ -13,14 +13,14 @@ from model import SegawaModel, device
 # ---------------- Hyperparameters ----------------
 BATCH_SIZE = 64
 EPOCHS = 30
-LEARNING_RATE = 3e-4      # 1e-3 is too hot for a transformer
-WEIGHT_DECAY = 0.01
-WARMUP_FRAC = 0.05        # first 5% of steps ramp LR up from ~0
-MIN_LR_FRAC = 0.10        # cosine decays to 10% of peak LR
+LEARNING_RATE = 5e-4      # Slightly higher LR for faster convergence
+WEIGHT_DECAY = 0.05       # Stronger weight decay for regularization
+WARMUP_EPOCHS = 2         # Explicitly use 2 warmup epochs
+MIN_LR_FRAC = 0.05        # cosine decays to 5% of peak LR
 GRAD_CLIP = 1.0
-PATIENCE = 4              # stop after N epochs with no val-loss improvement
+PATIENCE = 5              # stop after N epochs with no val-loss improvement
 MAX_LENGTH = 60
-VOCAB_SIZE = 15000        # Increased vocab size since we added a lot of Wikipedia text!
+VOCAB_SIZE = 15000        # Vocabulary size
 SEED = 42
 
 
@@ -44,13 +44,13 @@ def build_optimizer(model):
     return torch.optim.AdamW(groups, lr=LEARNING_RATE, betas=(0.9, 0.98), eps=1e-9)
 
 
-def build_scheduler(optimizer, total_steps):
-    warmup = max(1, int(WARMUP_FRAC * total_steps))
+def build_scheduler(optimizer, total_steps, steps_per_epoch):
+    warmup_steps = max(1, WARMUP_EPOCHS * steps_per_epoch)
 
     def lr_lambda(step):
-        if step < warmup:
-            return (step + 1) / warmup
-        progress = (step - warmup) / max(1, total_steps - warmup)
+        if step < warmup_steps:
+            return (step + 1) / warmup_steps
+        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
         cosine = 0.5 * (1 + math.cos(math.pi * progress))
         return MIN_LR_FRAC + (1 - MIN_LR_FRAC) * cosine
 
@@ -114,8 +114,9 @@ def train():
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
     optimizer = build_optimizer(model)
-    total_steps = EPOCHS * len(train_loader)
-    scheduler = build_scheduler(optimizer, total_steps)
+    steps_per_epoch = len(train_loader)
+    total_steps = EPOCHS * steps_per_epoch
+    scheduler = build_scheduler(optimizer, total_steps, steps_per_epoch)
     criterion = nn.CrossEntropyLoss(ignore_index=dataset.PAD_IDX)
 
     os.makedirs("checkpoints", exist_ok=True)

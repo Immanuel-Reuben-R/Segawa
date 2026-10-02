@@ -58,9 +58,9 @@ class SegawaModel(nn.Module):
     def __init__(
         self,
         vocab_size,
-        embed_size=256,
+        embed_size=384,
         num_layers=6,
-        heads=8,
+        heads=6,
         forward_expansion=4,
         dropout=0.2,
         max_length=512,

@@ -92,20 +92,37 @@ class SegawaDataset(Dataset):
                                 if q and a: raw_pairs.append((q, a, f"pc_{split}_{idx}"))
 
         # ---------- Vocabulary ----------
-        print("Building vocabulary...")
-        counter = Counter()
-        for q, a, _ in raw_pairs:
-            counter.update(q)
-            counter.update(a)
+        vocab_path = os.path.join(data_dir, "vocab.json")
+        import json
+        if os.path.exists(vocab_path):
+            print("Loading existing vocabulary...")
+            with open(vocab_path, 'r', encoding='utf-8') as f:
+                self.vocab = json.load(f)
+        else:
+            print("Building vocabulary...")
+            counter = Counter()
+            for q, a, _ in raw_pairs:
+                counter.update(q)
+                counter.update(a)
 
-        self.vocab = ['<PAD>', '<UNK>', '<BOS>', '<EOS>']
-        self.vocab += [w for w, _ in counter.most_common(vocab_size - 4)]
+            self.vocab = ['<PAD>', '<UNK>', '<BOS>', '<EOS>']
+            # Sort by count (descending), then alphabetically to ensure deterministic order
+            sorted_items = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
+            self.vocab += [w for w, _ in sorted_items[:vocab_size - 4]]
+            
+            # Save vocabulary for inference
+            try:
+                with open(vocab_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.vocab, f)
+            except Exception as e:
+                print(f"Warning: could not save vocab.json: {e}")
+
         self.word2idx = {w: i for i, w in enumerate(self.vocab)}
         self.idx2word = {i: w for w, i in self.word2idx.items()}
         self.PAD_IDX = self.word2idx['<PAD>']
-        self.UNK_IDX = self.word2idx['<UNK>']
-        self.BOS_IDX = self.word2idx['<BOS>']
-        self.EOS_IDX = self.word2idx['<EOS>']
+        self.UNK_IDX = self.word2idx.get('<UNK>', 1)
+        self.BOS_IDX = self.word2idx.get('<BOS>', 2)
+        self.EOS_IDX = self.word2idx.get('<EOS>', 3)
 
         # ---------- Pre-encode, truncate safely ----------
         budget = max_length - 2
