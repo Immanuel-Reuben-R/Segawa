@@ -17,47 +17,79 @@ def tokenize(text):
     return TOKEN_RE.findall(text)
 
 
-class CornellMovieDataset(Dataset):
-    def __init__(self, lines_path, conv_path, shakespeare_path, max_length=60,
-                 vocab_size=10000, include_shakespeare=True, answer_only_loss=True):
+class SegawaDataset(Dataset):
+    def __init__(self, data_dir, max_length=60, vocab_size=10000, answer_only_loss=True, load_all=True):
         self.max_length = max_length
         self.answer_only_loss = answer_only_loss
 
         raw_pairs = []  # (q_tokens, a_tokens, conversation_id)
+        
+        # Helper to load simple QA pairs
+        def add_pairs(q_list, a_list, prefix):
+            for i, (q_text, a_text) in enumerate(zip(q_list, a_list)):
+                if not isinstance(q_text, str) or not isinstance(a_text, str): continue
+                q = tokenize(q_text)
+                a = tokenize(a_text)
+                if q and a:
+                    raw_pairs.append((q, a, f"{prefix}{i}"))
 
-        # ---------- Cornell ----------
+        # ---------- 1. Cornell Movie Dialogs ----------
+        lines_path = os.path.join(data_dir, "Shakespeare and Cornell", "movie_lines.txt")
+        conv_path = os.path.join(data_dir, "Shakespeare and Cornell", "movie_conversations.txt")
         if os.path.exists(lines_path) and os.path.exists(conv_path):
             print("Loading Cornell Movie Dialogs...")
             sep = r' \+\+\+\$\+\+\+ '
-            lines_df = pd.read_csv(
-                lines_path, sep=sep, engine='python', encoding='latin1', on_bad_lines='skip',
-                names=['lineID', 'characterID', 'movieID', 'character', 'text'])
-            conv_df = pd.read_csv(
-                conv_path, sep=sep, engine='python', encoding='latin1', on_bad_lines='skip',
-                names=['char1ID', 'char2ID', 'movieID', 'lineIDs'])
-
+            lines_df = pd.read_csv(lines_path, sep=sep, engine='python', encoding='latin1', on_bad_lines='skip', names=['lineID', 'characterID', 'movieID', 'character', 'text'])
+            conv_df = pd.read_csv(conv_path, sep=sep, engine='python', encoding='latin1', on_bad_lines='skip', names=['char1ID', 'char2ID', 'movieID', 'lineIDs'])
             line_dict = dict(zip(lines_df['lineID'], lines_df['text'].fillna('')))
             for conv_idx, line_ids_str in enumerate(conv_df['lineIDs']):
-                try:
-                    line_ids = ast.literal_eval(line_ids_str)
-                except Exception:
-                    continue
+                try: line_ids = ast.literal_eval(line_ids_str)
+                except: continue
                 for i in range(len(line_ids) - 1):
                     q = tokenize(line_dict.get(line_ids[i], ""))
                     a = tokenize(line_dict.get(line_ids[i + 1], ""))
-                    if q and a:
-                        raw_pairs.append((q, a, f"c{conv_idx}"))
+                    if q and a: raw_pairs.append((q, a, f"c{conv_idx}"))
 
-        # ---------- Shakespeare (optional) ----------
-        if include_shakespeare and os.path.exists(shakespeare_path):
-            print("Loading Shakespeare...")
-            with open(shakespeare_path, 'r', encoding='utf-8') as f:
-                lines = [l.strip() for l in f if l.strip() and not l.strip().endswith(':')]
-            toks = [tokenize(l) for l in lines]
-            toks = [t for t in toks if len(t) > 2]
-            for i in range(len(toks) - 1):
-                # group ~40 consecutive lines as one "conversation" for splitting
-                raw_pairs.append((toks[i], toks[i + 1], f"s{i // 40}"))
+        # ---------- 2. DailyDialogue ----------
+        dd_dir = os.path.join(data_dir, "DailyDialogue")
+        if load_all and os.path.exists(dd_dir):
+            print("Loading DailyDialogue...")
+            for split in ["train.csv", "validation.csv", "test.csv"]:
+                path = os.path.join(dd_dir, split)
+                if os.path.exists(path):
+                    df = pd.read_csv(path)
+                    for idx, row in df.iterrows():
+                        try:
+                            dialog = ast.literal_eval(row['dialog'])
+                            for i in range(len(dialog) - 1):
+                                q, a = tokenize(dialog[i]), tokenize(dialog[i+1])
+                                if q and a: raw_pairs.append((q, a, f"dd_{split}_{idx}"))
+                        except: pass
+
+        # ---------- 3. Dolly (databricks-dolly-15k) ----------
+        dolly_path = os.path.join(data_dir, "Dolly", "train.csv")
+        if load_all and os.path.exists(dolly_path):
+            print("Loading Dolly...")
+            df = pd.read_csv(dolly_path)
+            # Combine instruction and context for the question
+            qs = (df['instruction'].fillna('') + " " + df['context'].fillna('')).tolist()
+            ans = df['response'].fillna('').tolist()
+            add_pairs(qs, ans, "dolly")
+
+        # ---------- 4. PersonaChat ----------
+        persona_path = os.path.join(data_dir, "PersonaChat", "personachat_self_original.json")
+        if load_all and os.path.exists(persona_path):
+            print("Loading PersonaChat (this takes a moment)...")
+            import json
+            with open(persona_path, 'r', encoding='utf-8') as f:
+                d = json.load(f)
+                for split in ['train', 'valid']:
+                    if split in d:
+                        for idx, item in enumerate(d[split]):
+                            history = item.get('history', [])
+                            for i in range(len(history) - 1):
+                                q, a = tokenize(history[i]), tokenize(history[i+1])
+                                if q and a: raw_pairs.append((q, a, f"pc_{split}_{idx}"))
 
         # ---------- Vocabulary ----------
         print("Building vocabulary...")
@@ -65,6 +97,7 @@ class CornellMovieDataset(Dataset):
         for q, a, _ in raw_pairs:
             counter.update(q)
             counter.update(a)
+
         self.vocab = ['<PAD>', '<UNK>', '<BOS>', '<EOS>']
         self.vocab += [w for w, _ in counter.most_common(vocab_size - 4)]
         self.word2idx = {w: i for i, w in enumerate(self.vocab)}
@@ -75,15 +108,16 @@ class CornellMovieDataset(Dataset):
         self.EOS_IDX = self.word2idx['<EOS>']
 
         # ---------- Pre-encode, truncate safely ----------
-        # Sequence = BOS + Q + EOS + A + EOS  ->  len(Q) + len(A) <= max_length - 2
         budget = max_length - 2
         max_q = budget // 2
         self.encoded, self.conv_ids = [], []
         dropped = 0
+        
+        # Add Pairs
         for q, a, cid in raw_pairs:
-            q_ids = self.encode_tokens(q)[-max_q:]          # keep the END of long questions
+            q_ids = self.encode_tokens(q)[-max_q:]
             a_ids = self.encode_tokens(a)
-            if len(a_ids) > budget - len(q_ids):             # never train on a cut-off answer
+            if len(a_ids) > budget - len(q_ids):
                 dropped += 1
                 continue
             self.encoded.append((q_ids, a_ids))
@@ -138,13 +172,13 @@ class CornellMovieDataset(Dataset):
 
     def __getitem__(self, idx):
         q, a = self.encoded[idx]
+        
         seq = [self.BOS_IDX] + q + [self.EOS_IDX] + a + [self.EOS_IDX]
         seq += [self.PAD_IDX] * (self.max_length + 1 - len(seq))
-
         inputs = torch.tensor(seq[:-1], dtype=torch.long)
         targets = torch.tensor(seq[1:], dtype=torch.long)
 
         if self.answer_only_loss:
-            # Don't make the model "predict" random movie questions; only grade the answer.
             targets[:len(q) + 1] = self.PAD_IDX
+                
         return inputs, targets

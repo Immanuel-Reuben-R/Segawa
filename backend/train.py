@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
-from dataset import CornellMovieDataset
+from dataset import SegawaDataset
 from model import SegawaModel, device
 
 # ---------------- Hyperparameters ----------------
@@ -20,7 +20,7 @@ MIN_LR_FRAC = 0.10        # cosine decays to 10% of peak LR
 GRAD_CLIP = 1.0
 PATIENCE = 4              # stop after N epochs with no val-loss improvement
 MAX_LENGTH = 60
-VOCAB_SIZE = 8000
+VOCAB_SIZE = 15000        # Increased vocab size since we added a lot of Wikipedia text!
 SEED = 42
 
 
@@ -87,13 +87,12 @@ def train():
     set_seed(SEED)
 
     # 1. Data
-    data_dir = r"F:\Segawa datasets"
-    dataset = CornellMovieDataset(
-        os.path.join(data_dir, "movie_lines.txt"),
-        os.path.join(data_dir, "movie_conversations.txt"),
-        os.path.join(data_dir, "input.txt"),
+    data_dir = "datasets"
+    dataset = SegawaDataset(
+        data_dir=data_dir,
         max_length=MAX_LENGTH,
         vocab_size=VOCAB_SIZE,
+        load_all=True
     )
 
     train_idx, val_idx = dataset.split_by_conversation(val_frac=0.05, seed=SEED)

@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import torch
-from dataset import CornellMovieDataset
+from dataset import SegawaDataset
 from model import SegawaModel, device
 
 app = Flask(__name__)
@@ -17,10 +17,8 @@ print("Starting Segawa API Server...")
 
 # 1. Load Dataset purely to get the vocabulary mappings
 print("Loading vocabulary (this takes a moment)...")
-lines_path = r"datasets/movie_lines.txt"
-conv_path = r"datasets/movie_conversations.txt"
-shakespeare_path = r"datasets/input.txt"
-dataset = CornellMovieDataset(lines_path, conv_path, shakespeare_path, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE)
+dataset_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'datasets'))
+dataset = SegawaDataset(dataset_dir, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE, load_all=False)
 
 # 2. Initialize Model
 print("Loading Segawa Brain...")
@@ -68,13 +66,11 @@ def generate_response(user_input):
 
 @app.route("/")
 def index():
-    frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
-    return send_from_directory(frontend_dir, 'index.html')
+    return send_from_directory(r'C:\Users\Immanuel\Carly\frontend', 'index.html')
 
 @app.route("/<path:path>")
 def serve_static(path):
-    frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
-    return send_from_directory(frontend_dir, path)
+    return send_from_directory(r'C:\Users\Immanuel\Carly\frontend', path)
 
 @app.route("/chat", methods=["POST"])
 def chat():
