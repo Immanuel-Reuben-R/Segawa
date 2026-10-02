@@ -19,7 +19,8 @@ print("Starting Segawa API Server...")
 print("Loading vocabulary (this takes a moment)...")
 lines_path = r"datasets/movie_lines.txt"
 conv_path = r"datasets/movie_conversations.txt"
-dataset = CornellMovieDataset(lines_path, conv_path, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE)
+shakespeare_path = r"datasets/input.txt"
+dataset = CornellMovieDataset(lines_path, conv_path, shakespeare_path, max_length=MAX_LENGTH, vocab_size=VOCAB_SIZE)
 
 # 2. Initialize Model
 print("Loading Segawa Brain...")
